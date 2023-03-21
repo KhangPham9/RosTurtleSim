@@ -24,13 +24,12 @@ class Turtle {
 
         }
 
-
         void wait_for_initial_pose(const turtlesim::Pose::ConstPtr& pose) {
             x = pose->x;
             y = pose->y;
 
             yaw = pose->theta;
-            ROS_INFO("\nTurtle x: %f\nTurtle y: %f\n", x, y);
+            ROS_INFO("\nTurtle x: %f\nTurtle y: %f\nTurtle yaw: %f\n", x, y, yaw);
             pose_set = true;
         }
 
@@ -54,7 +53,7 @@ class Turtle {
 
             float distance_moved = 0.0;
 
-            ros::Rate move_frequency(10);
+            ros::Rate move_frequency(62.5);
 
             geometry_msgs::Twist t;
             t.linear.x = speed;
@@ -65,23 +64,27 @@ class Turtle {
             t.angular.z = 0;
 
             while(ros::ok()) {
+                if (distance_moved >= distance) {
+                    ROS_INFO("\nTurtle x: %f\nTurtle y: %f\n", x, y);
+                    ROS_INFO("Finished moving");
+                    move_frequency.sleep();
+                    break;
+                }
                 cmd_vel_pub.publish(t);
+                distance_moved += std::abs(std::sqrt(std::pow(x - start_x, 2) + std::pow(y - start_y , 2)));
                 move_frequency.sleep();
-                ROS_INFO("Distance %f\n", std::sqrt(std::pow(x - start_x, 2) + std::pow(y - start_y , 2)));
-                distance_moved += 0.1 * std::abs(std::sqrt(std::pow(x - start_x, 2) + std::pow(y - start_y , 2)));
+
+
+                start_x = x;
+                start_y = y;
 
                 ROS_INFO("Turtle moved %f\n", distance_moved);
 
-                if (distance_moved >= distance) {
-                    ROS_INFO("\nTurtle x: %f\nTurtle y: %f\n",
-                        x, y);
-                        geometry_msgs::Twist t;
-                    ROS_INFO("Finished moving");
-                    break;
-                }
-
                 ros::spinOnce();
             }
+
+            t.linear.x = 0;
+            cmd_vel_pub.publish(t);
 
         }
 
@@ -89,7 +92,7 @@ class Turtle {
         void rotate(float speed, float theta) {
             float start_theta = yaw;
 
-            ros::Rate rotate_frequency(10);
+            ros::Rate rotate_frequency(62.5);
 
             geometry_msgs::Twist t;
             t.linear.x = 0;
@@ -101,23 +104,25 @@ class Turtle {
 
             float theta_rotated = 0.0;
             while(ros::ok()) {
-                cmd_vel_pub.publish(t);
-
-                rotate_frequency.sleep();
-
-                theta_rotated += 0.1 * std::abs((start_theta - yaw));
-                // ROS_INFO("Yaw %f", yaw);
-                ROS_INFO("Turtle rotated %f\n", theta_rotated);
 
                 if (theta_rotated >= theta) {
                     ROS_INFO("Finished Rotation");
                     break;
                 }
+                cmd_vel_pub.publish(t);
+                theta_rotated += std::abs((start_theta - yaw));
+                rotate_frequency.sleep();
 
+                // ROS_INFO("Yaw %f", yaw);
+                ROS_INFO("Turtle rotated %f\n", theta_rotated);
+                ROS_INFO("Turtle yaw %f\n", yaw);
+
+                start_theta = yaw;
                 ros::spinOnce();
-
-
             }
+
+            t.angular.z = 0;
+            cmd_vel_pub.publish(t);
         }
 };
 
@@ -139,8 +144,8 @@ int main(int argc, char** argv) {
     // }
 
     t.move(0.1, 5.0);
-    t.rotate(0.1, 2);
-    t.move(1.0, 20.0);
+    t.rotate(0.4, 1);
+    // t.move(1.0, 20.0);
 
     
     return 0;
