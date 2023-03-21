@@ -1,4 +1,3 @@
-
 #include <ros/ros.h>
 #include <turtlesim/Pose.h>
 #include <geometry_msgs/Twist.h>
@@ -9,11 +8,30 @@ class Turtle {
         ros::Publisher cmd_vel_pub;
         ros::Subscriber pose_sub;
 
+        bool pose_set = false;
         float x, y, yaw;
     public:
         Turtle(ros::NodeHandle *n) {
             cmd_vel_pub = n->advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 100);
             pose_sub = n->subscribe("/turtle1/pose", 100, &Turtle::pose_callback, this);
+            
+            ros::Subscriber initial_pose = n->subscribe("/turtle1/pose", 100, &Turtle::wait_for_initial_pose, this);
+
+            while(!pose_set) {
+                ros::spinOnce();
+            }
+
+
+        }
+
+
+        void wait_for_initial_pose(const turtlesim::Pose::ConstPtr& pose) {
+            x = pose->x;
+            y = pose->y;
+
+            yaw = pose->theta;
+            ROS_INFO("\nTurtle x: %f\nTurtle y: %f\n", x, y);
+            pose_set = true;
         }
 
         void pose_callback(const turtlesim::Pose::ConstPtr& pose) {
@@ -48,13 +66,16 @@ class Turtle {
 
             while(ros::ok()) {
                 cmd_vel_pub.publish(t);
-
-                distance_moved +=   0.1 * std::abs(std::sqrt(std::pow(x - start_x, 2) + std::pow(y - start_y , 2)));
                 move_frequency.sleep();
+                ROS_INFO("Distance %f\n", std::sqrt(std::pow(x - start_x, 2) + std::pow(y - start_y , 2)));
+                distance_moved += 0.1 * std::abs(std::sqrt(std::pow(x - start_x, 2) + std::pow(y - start_y , 2)));
 
                 ROS_INFO("Turtle moved %f\n", distance_moved);
 
                 if (distance_moved >= distance) {
+                    ROS_INFO("\nTurtle x: %f\nTurtle y: %f\n",
+                        x, y);
+                        geometry_msgs::Twist t;
                     ROS_INFO("Finished moving");
                     break;
                 }
@@ -117,7 +138,7 @@ int main(int argc, char** argv) {
     //     loop_rate.sleep();
     // }
 
-    t.move(1.0, 20.0);
+    t.move(0.1, 5.0);
     t.rotate(0.1, 2);
     t.move(1.0, 20.0);
 
