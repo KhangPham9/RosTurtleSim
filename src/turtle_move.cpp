@@ -3,10 +3,15 @@
 #include <geometry_msgs/Twist.h>
 #include <cmath>
 
+#include "turtle/TurtleMov.h"
+#include "turtle/TurtleRot.h"
+
 class Turtle {
     private:
         ros::Publisher cmd_vel_pub;
         ros::Subscriber pose_sub;
+        ros::ServiceServer move_turtle;
+        ros::ServiceServer rot_turtle;
 
         bool pose_set = false;
         float x, y, yaw;
@@ -14,6 +19,9 @@ class Turtle {
         Turtle(ros::NodeHandle *n) {
             cmd_vel_pub = n->advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 100);
             pose_sub = n->subscribe("/turtle1/pose", 100, &Turtle::pose_callback, this);
+            move_turtle = n->advertiseService("move_turtle", &Turtle::move_service, this);
+            rot_turtle = n->advertiseService("rotate_turtle", &Turtle::rotate_service, this);
+
             
             ros::Subscriber initial_pose = n->subscribe("/turtle1/pose", 100, &Turtle::wait_for_initial_pose, this);
 
@@ -89,6 +97,15 @@ class Turtle {
         }
 
 
+        bool move_service(turtle::TurtleMov::Request &req, turtle::TurtleMov::Response &res) {
+            ROS_INFO("Beginning Turtle Movement");
+            Turtle::move(req.speed, req.distance);
+            ROS_INFO("Completed Movement");
+
+            return true;
+        }
+
+
         void rotate(float speed, float theta) {
             float start_theta = yaw;
 
@@ -124,6 +141,14 @@ class Turtle {
             t.angular.z = 0;
             cmd_vel_pub.publish(t);
         }
+
+
+        bool rotate_service(turtle::TurtleRot::Request &req, turtle::TurtleRot::Response &res) {
+            ROS_INFO("Beginning Turtle Rotation");
+            Turtle::rotate(req.speed, req.angle);
+            ROS_INFO("Completed Rotation");
+            return true;
+        }
 };
 
 
@@ -137,14 +162,18 @@ int main(int argc, char** argv) {
 
     ros::Rate loop_rate(10);
 
+
+    ros::spin();
+
+
     // while (ros::ok()) {
 
     //     ros::spinOnce();
     //     loop_rate.sleep();
     // }
 
-    t.move(0.1, 5.0);
-    t.rotate(0.4, 1);
+    // t.move(0.1, 5.0);
+    // t.rotate(0.4, 1);
     // t.move(1.0, 20.0);
 
     
